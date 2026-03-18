@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Railways Act 1989",
+    "slug": "railways-act",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A2744"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.soorajrk.railwaysact"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1A2744"
+      },
+      "package": "com.soorajrk.railwaysact"
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
