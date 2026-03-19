@@ -8,7 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { Merriweather_400Regular, Merriweather_700Bold, useFonts as useMerriweatherFonts } from '@expo-google-fonts/merriweather';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CHAPTERS, ACT_METADATA } from './data';
+import { CHAPTERS, ACT_METADATA } from './Data';
 
 const BOOKMARKS_KEY = '@railways_act_bookmarks';
 
