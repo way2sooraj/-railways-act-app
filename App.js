@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, createContext, useContext } from 'react';
+import React, { useState, useCallback, useMemo, createContext, useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput, ScrollView, Platform, StatusBar, Keyboard } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -7,7 +7,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { Merriweather_400Regular, Merriweather_700Bold, useFonts as useMerriweatherFonts } from '@expo-google-fonts/merriweather';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
-import { CHAPTERS, ACT_METADATA } from './Data';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CHAPTERS, ACT_METADATA } from './data';
+
+const BOOKMARKS_KEY = '@railways_act_bookmarks';
 
 const C = {
   text: "#1A2744",
@@ -35,16 +38,41 @@ const BookmarksContext = createContext({
 function BookmarksProvider({ children }) {
   const [bookmarks, setBookmarks] = useState([]);
 
+  // Load from AsyncStorage on startup
+  useEffect(() => {
+    AsyncStorage.getItem(BOOKMARKS_KEY).then((data) => {
+      if (data) {
+        try {
+          setBookmarks(JSON.parse(data));
+        } catch {
+          setBookmarks([]);
+        }
+      }
+    });
+  }, []);
+
+  // Save to AsyncStorage on every change
+  const save = useCallback((updated) => {
+    setBookmarks(updated);
+    AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
+  }, []);
+
   const toggleBookmark = useCallback((item) => {
-    setBookmarks(prev =>
-      prev.find(b => b.id === item.id)
+    setBookmarks(prev => {
+      const updated = prev.find(b => b.id === item.id)
         ? prev.filter(b => b.id !== item.id)
-        : [...prev, { ...item, addedAt: Date.now() }]
-    );
+        : [...prev, { ...item, addedAt: Date.now() }];
+      AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const removeBookmark = useCallback((id) => {
-    setBookmarks(prev => prev.filter(b => b.id !== id));
+    setBookmarks(prev => {
+      const updated = prev.filter(b => b.id !== id);
+      AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const isBookmarked = useCallback((id) => bookmarks.some(b => b.id === id), [bookmarks]);
@@ -617,8 +645,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.background },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
-
-  // Home header
   header: { paddingHorizontal: 20, paddingBottom: 24, alignItems: 'center' },
   headerBadge: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 4, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   headerBadgeText: { fontFamily: 'Inter_600SemiBold', color: 'rgba(255,255,255,0.9)', fontSize: 10, letterSpacing: 2 },
@@ -629,27 +655,19 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.6)' },
   metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
-
-  // Stats
   statsBar: { flexDirection: 'row', backgroundColor: C.backgroundCard, marginHorizontal: 16, marginTop: -1, borderRadius: 12, paddingVertical: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   statItem: { flex: 1, alignItems: 'center' },
   statNumber: { fontFamily: 'Merriweather_700Bold', fontSize: 20, color: C.navy, marginBottom: 2, textAlign: 'center' },
   statLabel: { fontFamily: 'Inter_400Regular', fontSize: 11, color: C.textMuted, letterSpacing: 0.3 },
   statDivider: { width: 1, backgroundColor: C.border, marginVertical: 4 },
-
-  // Action bar
   actionBar: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.backgroundCard, paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: C.tint },
   actionBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: C.tint },
   actionBtnSecondary: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: C.backgroundCard, borderRadius: 10, borderWidth: 1, borderColor: C.border },
   badge: { position: 'absolute', top: 6, right: 6, backgroundColor: C.accent, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   badgeText: { fontFamily: 'Inter_700Bold', fontSize: 9, color: C.navy },
-
-  // TOC divider
   sectionDivider: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
   sectionDividerText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: C.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
-
-  // Chapter card (home)
   chapterCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.backgroundCard, marginHorizontal: 16, marginBottom: 8, borderRadius: 12, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1, gap: 12 },
   chapterCardPressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   chapterNumberBadge: { width: 40, height: 40, backgroundColor: C.navy, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
@@ -659,8 +677,6 @@ const styles = StyleSheet.create({
   chapterTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 15, color: C.text, lineHeight: 21, marginBottom: 5 },
   chapterFooter: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   chapterSections: { fontFamily: 'Inter_400Regular', fontSize: 11, color: C.textMuted },
-
-  // Chapter screen header
   chapterHeader: { paddingHorizontal: 20, paddingBottom: 24 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   chapterNumWrap: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 8 },
@@ -671,8 +687,6 @@ const styles = StyleSheet.create({
   sectionCount: { fontFamily: 'Inter_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.6)' },
   sectionsLabelWrap: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
   sectionsLabelText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: C.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
-
-  // Section card
   sectionCard: { backgroundColor: C.backgroundCard, marginHorizontal: 16, marginBottom: 10, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
   sectionCardPressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
@@ -683,8 +697,6 @@ const styles = StyleSheet.create({
   sectionPreview: { fontFamily: 'Inter_400Regular', fontSize: 13, color: C.textSecondary, lineHeight: 20, marginBottom: 10 },
   readMoreRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   readMore: { fontFamily: 'Inter_500Medium', fontSize: 12, color: C.tint },
-
-  // Section screen
   sectionScreenHeader: { paddingHorizontal: 20, paddingBottom: 24 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   bookmarkBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
@@ -707,8 +719,6 @@ const styles = StyleSheet.create({
   metaDivider: { height: 1, backgroundColor: C.border, marginVertical: 8 },
   navBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: C.tint, borderRadius: 10, paddingVertical: 12, backgroundColor: C.backgroundCard },
   navBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: C.tint },
-
-  // Search screen
   searchScreenHeader: { backgroundColor: C.backgroundCard, paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   backBtnLight: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: C.backgroundSecondary },
@@ -718,8 +728,6 @@ const styles = StyleSheet.create({
   resultCard: { backgroundColor: C.backgroundCard, borderRadius: 12, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
   resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7, flexWrap: 'wrap' },
   resultChapterLabel: { fontFamily: 'Inter_400Regular', fontSize: 11, color: C.textMuted, flex: 1 },
-
-  // Empty states
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
   emptyIcon: { width: 72, height: 72, backgroundColor: C.backgroundSecondary, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 18, color: C.text },
@@ -727,8 +735,6 @@ const styles = StyleSheet.create({
   suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 },
   suggestionChip: { backgroundColor: C.backgroundSecondary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border },
   suggestionText: { fontFamily: 'Inter_500Medium', fontSize: 13, color: C.textSecondary },
-
-  // Bookmarks screen
   listHeader: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: C.textMuted, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
   bookmarkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   bookmarkBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFF8E1', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
